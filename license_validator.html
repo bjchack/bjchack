@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+  <meta charset="UTF-8">
+  <title>License Validator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #f0f0f0;
+      padding: 2rem;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+    input[type="text"] {
+      width: 300px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔐 Offline License Validator</h2>
+  <p>Ilagay ang iyong Device ID (MAC Address), at i-upload ang iyong <code>license.key</code>.</p>
+
+  <input type="text" id="deviceId" placeholder="Hal. 44:BB:58:DE:58:00"><br>
+  <input type="file" id="licenseFile"><br>
+  <button onclick="verify()">Suriin ang Lisensya</button>
+
+  <div id="result"></div>
+
+  <script>
+    const publicKeyPem = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqfNSPAhWsXNOqjxPw5T0
+N9zkUpXR1EjCmPt/5OOYMLnPv1x0UI1vr9syLYc5x3jDhZuf5gJyCiSX5bRZO5KN
+eKEIlPv6x0e9Qffaf29NVKieftS2aENtgQY4mfNeUtMbo194Hn0flT4Dpdjgk0DP
+7cEfKW8LM4cyOZAKflJwlyDay7NgVMsVWx5HFGLoWpHUFLcFdcx8m2+Cx6RCj1f6
+3hHlFR8KvqHzrRRgaE1CCpxSl/GS/7T0mrvpoRzitau7RwrvGzmjqeIgC/52K7Zu
+6daWAMITT0FtyMAoS3HqM16qncBYZz07FDtonyoBlM2X/PlFmqaRZUiCMJEGIh9u
+iQIDAQAB
+-----END PUBLIC KEY-----`;
+
+    function pemToBuffer(pem) {
+      const b64 = pem.replace(/-----.*?-----/g, '').replace(/\\s+/g, '');
+      const binary = atob(b64);
+      const buffer = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        buffer[i] = binary.charCodeAt(i);
+      }
+      return buffer.buffer;
+    }
+
+    async function verify() {
+      const id = document.getElementById("deviceId").value.trim();
+      const file = document.getElementById("licenseFile").files[0];
+      const result = document.getElementById("result");
+
+      if (!id || !file) {
+        result.textContent = "❌ Kulang ang input. Pakilagay ang Device ID at i-upload ang license file.";
+        return;
+      }
+
+      try {
+        const publicKey = await crypto.subtle.importKey(
+          "spki",
+          pemToBuffer(publicKeyPem),
+          { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+          false,
+          ["verify"]
+        );
+
+        const signature = await file.arrayBuffer();
+        const isValid = await crypto.subtle.verify(
+          "RSASSA-PKCS1-v1_5",
+          publicKey,
+          signature,
+          new TextEncoder().encode(id)
+        );
+
+        result.textContent = isValid ? "✅ VALID LICENSE!" : "❌ INVALID LICENSE!";
+      } catch (err) {
+        result.textContent = "⚠️ May error sa pag-validate: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
