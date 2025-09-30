@@ -1,0 +1,1 @@
+vless://YOUR_UUID_HERE@yourdomain.com:443?type=ws&security=tls&path=%2Fray&host=yourdomain.com#MyServer
